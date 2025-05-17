@@ -21,6 +21,7 @@ class PriorityQueue {
 
 // Inisialisasi solver
 let solver = new Solver();
+window.solver = solver; // Pastikan solver tersedia secara global
 
 // Fungsi untuk memuat config
 function loadConfig() {
@@ -34,20 +35,21 @@ function loadConfig() {
             solver.loadConfig(content);
             document.getElementById('output').innerHTML = '';
             logBoard(solver.board);
-            // Beri tahu sketch.js untuk mengubah ukuran kanvas
             if (typeof window.updateCanvasSize === 'function') {
                 window.updateCanvasSize(solver.board.width, solver.board.height);
             } else {
-                console.warn('updateCanvasSize is not defined. Ensure sketch.js is loaded.');
+                console.warn('updateCanvasSize is not defined.');
             }
+            console.log('Config loaded successfully:', solver.board);
         } catch (e) {
             alert('Error parsing config: ' + e.message);
+            console.error('Error in loadConfig:', e);
         }
     });
 }
 
-// Fungsi solve
-function solve() {
+// Fungsi untuk memulai pencarian
+function startSolve() {
     if (!solver.board) {
         alert('Please load a config file first');
         return;
@@ -55,17 +57,23 @@ function solve() {
     const algorithm = document.getElementById('algorithm').value;
     const heuristic = document.getElementById('heuristic').value;
     try {
-        const result = solver.solve(algorithm, heuristic);
-        if (result.moves) {
-            solution = result.moves;
-            currentStep = 0;
-            isSolving = true;
-            document.getElementById('output').innerHTML += `Nodes visited: ${result.nodesVisited}\n`;
-            document.getElementById('output').innerHTML += `Time taken: ${result.timeTaken.toFixed(2)} ms\n`;
-        } else {
-            alert('No solution found');
-        }
+        window.searchAlgorithm = algorithm;
+        window.searchHeuristic = heuristic;
+        window.searchStep = 0;
+        window.searchResult = null;
+        window.isSearching = true;
+        window.nodesVisited = 0;
+        window.currentBoard = solver.board.clone();
+        document.getElementById('progress').textContent = 'Progress: 0% (Nodes visited: 0)';
+        console.log('startSolve called with algorithm:', algorithm, 'heuristic:', heuristic);
+        console.log('Global variables set:', {
+            searchAlgorithm: window.searchAlgorithm,
+            searchHeuristic: window.searchHeuristic,
+            isSearching: window.isSearching,
+            nodesVisited: window.nodesVisited
+        });
     } catch (e) {
-        alert('Error solving: ' + e.message);
+        alert('Error starting solve: ' + e.message);
+        console.error('Error in startSolve:', e);
     }
 }
