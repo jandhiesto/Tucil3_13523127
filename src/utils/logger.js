@@ -1,21 +1,46 @@
-function logBoard(board, movedCarId = null) {
+function logBoard(board) {
     let output = '';
-    for (let row = 0; row < board.height; row++) {
-        for (let col = 0; col < board.width; col++) {
-            const cell = board.grid[row][col];
-            if (row === board.exit.row && col === board.exit.col) {
-                output += '<span style="color: blue;">K</span>';
-            } else if (cell === 'P') {
-                output += '<span style="color: red;">P</span>';
-            } else if (cell === movedCarId) {
-                output += '<span style="color: green;">' + cell + '</span>';
-            } else if (cell === 0) {
-                output += '.';
+    for (let i = 0; i < board.height; i++) {
+        for (let j = 0; j < board.width; j++) {
+            const cell = board.grid[i][j];
+            if (cell === 0) {
+                output += '<span style="color: grey;">.</span> ';
             } else {
-                output += cell;
+                // Cari mobil untuk menentukan warnanya
+                const car = board.cars.find(c => c.id === cell);
+                const color = car ? car.color : 'black';
+                output += `<span style="color: ${color};">${cell}</span> `;
             }
         }
         output += '\n';
     }
-    document.getElementById('output').innerHTML += output + '<hr>';
+    return output;
+}
+
+// Fungsi untuk membandingkan dua papan dan menyorot perubahan
+function logBoardWithChanges(oldBoard, newBoard) {
+    let output = '';
+    for (let i = 0; i < newBoard.height; i++) {
+        for (let j = 0; j < newBoard.width; j++) {
+            const oldCell = oldBoard.grid[i][j];
+            const newCell = newBoard.grid[i][j];
+            if (oldCell !== newCell) {
+                // Jika ada perubahan, sorot dengan latar belakang kuning
+                const car = newBoard.cars.find(c => c.id === newCell);
+                const color = car ? car.color : 'black';
+                output += `<span style="color: ${color}; background-color: yellow;">${newCell === 0 ? '.' : newCell}</span> `;
+            } else {
+                const cell = newBoard.grid[i][j];
+                if (cell === 0) {
+                    output += '<span style="color: grey;">.</span> ';
+                } else {
+                    const car = newBoard.cars.find(c => c.id === cell);
+                    const color = car ? car.color : 'black';
+                    output += `<span style="color: ${color};">${cell}</span> `;
+                }
+            }
+        }
+        output += '\n';
+    }
+    return output;
 }

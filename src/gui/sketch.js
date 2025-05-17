@@ -17,7 +17,7 @@ function setup() {
     if (window.solver && window.solver.board) {
         createCanvas(window.solver.board.width * CELL_SIZE, window.solver.board.height * CELL_SIZE);
     } else {
-        createCanvas(360, 360); // Default size
+        createCanvas(360, 360);
     }
     frameRate(60);
     console.log('Setup completed, solver available:', !!window.solver);
@@ -56,7 +56,15 @@ function draw() {
 
     // Animasi pencarian
     if (window.isSearching && window.searchAlgorithm) {
-        console.log('Search in progress... Nodes visited:', window.nodesVisited);
+        console.log('Starting search loop, algorithm:', window.searchAlgorithm, 'nodesVisited:', window.nodesVisited);
+        document.getElementById('output').innerHTML = '<pre>Search in progress... Nodes visited: ' + window.nodesVisited + '\n';
+        if (window.previousBoard) {
+            document.getElementById('output').innerHTML += logBoardWithChanges(window.previousBoard, boardToDraw);
+        } else {
+            document.getElementById('output').innerHTML += logBoard(boardToDraw);
+        }
+        document.getElementById('output').innerHTML += '</pre>';
+
         if (!window.searchResult) {
             let heuristicFunc = window.searchHeuristic === 'blocking' ? blockingPieces : manhattanDistance;
             let algorithmFunc;
@@ -73,50 +81,68 @@ function draw() {
                 default:
                     console.error('Unknown algorithm:', window.searchAlgorithm);
                     window.isSearching = false;
+                    document.getElementById('output').innerHTML = '<pre>Error: Unknown algorithm</pre>';
                     return;
             }
-            console.log('Starting algorithm:', window.searchAlgorithm);
+            console.log('Executing algorithm:', window.searchAlgorithm);
             try {
-                window.searchResult = algorithmFunc(window.currentBoard || window.solver.board.clone(), heuristicFunc, (board, visited) => {
+                window.searchResult = algorithmFunc(window.currentBoard || window.solver.board.clone(), window.searchAlgorithm !== 'ucs' ? heuristicFunc : null, (board, visited) => {
+                    console.log('Callback triggered - Received nodesVisited:', visited);
+                    window.previousBoard = window.currentBoard ? window.currentBoard.clone() : window.solver.board.clone();
                     window.currentBoard = board;
                     window.nodesVisited = visited;
-                    updateProgress();
-                    console.log('Callback triggered - Nodes visited:', visited, 'Board updated:', board.toString());
+                    console.log('Updated window.nodesVisited to:', window.nodesVisited);
                 });
-                if (window.searchResult.moves) {
-                    console.log('Solution found:', window.searchResult.moves);
-                    solution = window.searchResult.moves;
-                    window.isSearching = false;
-                    isSolving = true;
-                    currentStep = 0;
-                } else {
-                    console.log('No solution found');
-                    window.isSearching = false;
-                    alert('No solution found');
+                if (window.searchResult) {
+                    console.log('Search completed, result:', window.searchResult);
+                    window.nodesVisited = window.searchResult.nodesVisited;
+                    console.log('Final window.nodesVisited set to:', window.nodesVisited);
+                    if (window.searchResult.moves) {
+                        document.getElementById('output').innerHTML = '<pre>Solution found: ' + window.searchResult.moves.length + ' moves\n';
+                        document.getElementById('output').innerHTML += 'Total nodes visited: ' + window.nodesVisited + '\n'; // Tampilkan nodesVisited di log
+                        document.getElementById('output').innerHTML += logBoard(window.currentBoard);
+                        document.getElementById('output').innerHTML += '</pre>';
+                        solution = window.searchResult.moves;
+                        window.isSearching = false;
+                        isSolving = true;
+                        currentStep = 0;
+                    } else {
+                        document.getElementById('output').innerHTML = '<pre>No solution found\n';
+                        document.getElementById('output').innerHTML += 'Total nodes visited: ' + window.nodesVisited + '\n';
+                        document.getElementById('output').innerHTML += '</pre>';
+                        window.isSearching = false;
+                        alert('No solution found');
+                    }
                 }
             } catch (e) {
+                document.getElementById('output').innerHTML = '<pre>Error running algorithm: ' + e.message + '</pre>';
                 console.error('Error running algorithm:', e);
                 window.isSearching = false;
                 alert('Error during search: ' + e.message);
             }
         }
-    } else if (window.isSearching && !window.searchAlgorithm) {
-        console.error('Search attempted but no algorithm specified');
-        window.isSearching = false;
     }
 
     // Animasi solusi
     if (isSolving && solution && currentStep < solution.length) {
         if (frameCount % 30 === 0) {
             window.solver.board.applyMove(solution[currentStep]);
+            document.getElementById('output').innerHTML = '<pre>Step ' + (currentStep + 1) + ':\n';
+            if (window.previousBoard) {
+                document.getElementById('output').innerHTML += logBoardWithChanges(window.previousBoard, window.solver.board);
+            } else {
+                document.getElementById('output').innerHTML += logBoard(window.solver.board);
+            }
+            document.getElementById('output').innerHTML += '</pre>';
+            window.previousBoard = window.solver.board.clone();
             window.currentBoard = window.solver.board;
             currentStep++;
             if (currentStep >= solution.length) {
                 isSolving = false;
-                document.getElementById('progress').textContent += ` (Done in ${window.searchResult.timeTaken.toFixed(2)} ms)`;
-                console.log('Solution animation finished');
+                document.getElementById('output').innerHTML = '<pre>Solution animation finished (Time taken: ' + window.searchResult.timeTaken.toFixed(2) + ' ms)\n';
+                document.getElementById('output').innerHTML += logBoard(window.solver.board);
+                document.getElementById('output').innerHTML += '</pre>';
             }
-            updateProgress();
         }
     }
 
@@ -129,15 +155,5 @@ function draw() {
         } else {
             rect(window.solver.board.exit.col * CELL_SIZE, window.solver.board.height * CELL_SIZE, CELL_SIZE, CELL_SIZE);
         }
-    }
-}
-
-// Fungsi untuk memperbarui kemajuan
-function updateProgress() {
-    const progressElement = document.getElementById('progress');
-    if (progressElement && window.nodesVisited >= 0) {
-        const estimatedTotal = 1000;
-        const percentage = Math.min((window.nodesVisited / estimatedTotal) * 100, 100);
-        progressElement.textContent = `Progress: ${percentage.toFixed(1)}% (Nodes visited: ${window.nodesVisited})`;
     }
 }

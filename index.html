@@ -23,7 +23,8 @@
         </select>
         <button onclick="startSolve()">Solve</button>
     </div>
-    <div id="progress">Progress: 0% (Nodes visited: 0)</div>
+    <!-- Hapus elemen progress -->
+    <div id="canvas-container"></div>
     <div id="output"></div>
     <script src="src/utils/fileReader.js"></script>
     <script src="src/utils/logger.js"></script>
@@ -34,7 +35,7 @@
     <script src="src/algorithms/ucs.js"></script>
     <script src="src/algorithms/aStar.js"></script>
     <script src="src/core/solver.js"></script>
-    <script src="src/gui/sketch.js"></script> <!-- Pindahkan ke sini -->
+    <script src="src/gui/sketch.js"></script>
     <script src="src/gui/interface.js"></script>
 </body>
 </html>
