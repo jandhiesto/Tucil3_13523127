@@ -3,13 +3,15 @@ function greedyBFS(board, heuristic, callback) {
     let nodesVisited = 0;
     const queue = new PriorityQueue((a, b) => a.cost - b.cost);
     const visited = new Set();
-    queue.push({ board: board.clone(), moves: [], cost: heuristic(board) });
+    queue.push({ board, moves: [], cost: heuristic(board) });
     visited.add(board.toString());
 
     while (!queue.isEmpty()) {
         const { board: currentBoard, moves } = queue.pop();
         nodesVisited++;
-        callback(currentBoard, nodesVisited); // Panggil callback untuk update visual
+        if (callback) {
+            callback(currentBoard, nodesVisited, moves.length > 0 ? moves[moves.length - 1].carId : null);
+        }
         if (currentBoard.isSolved()) {
             const timeTaken = performance.now() - startTime;
             return { moves, nodesVisited, timeTaken };

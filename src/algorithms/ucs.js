@@ -1,6 +1,6 @@
-function ucs(board, callback) {
+function ucs(board, unused, callback) {
     const startTime = performance.now();
-    let nodesVisited = 0; // Variabel lokal untuk menghitung node
+    let nodesVisited = 0;
     const queue = new PriorityQueue((a, b) => a.cost - b.cost);
     const visited = new Set();
     queue.push({ board: board.clone(), moves: [], cost: 0 });
@@ -11,7 +11,7 @@ function ucs(board, callback) {
         nodesVisited++;
         console.log('UCS - Visiting node:', nodesVisited, 'State:', currentBoard.toString(), 'Cost:', cost);
         if (callback) {
-            callback(currentBoard, nodesVisited); // Panggil callback untuk update global nodesVisited
+            callback(currentBoard, nodesVisited, moves.length > 0 ? moves[moves.length - 1].carId : null);
         }
         if (currentBoard.isSolved()) {
             const timeTaken = performance.now() - startTime;

@@ -58,7 +58,8 @@ function startSolve() {
     window.nodesVisited = 0;
     window.currentBoard = null;
     window.previousBoard = solver.board.clone();
-    document.getElementById('output').innerHTML = '<pre>Starting search...</pre>';
+    document.getElementById('progress').textContent = 'Progress: 0% (Nodes visited: 0)';
+    document.getElementById('output').innerHTML = '<pre>Starting search...   </pre>';
 
     const algorithm = document.getElementById('algorithm').value;
     const heuristic = document.getElementById('heuristic').value;

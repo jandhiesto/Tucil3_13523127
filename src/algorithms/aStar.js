@@ -3,13 +3,15 @@ function aStar(board, heuristic, callback) {
     let nodesVisited = 0;
     const queue = new PriorityQueue((a, b) => a.cost - b.cost);
     const visited = new Set();
-    queue.push({ board: board.clone(), moves: [], g: 0, cost: heuristic(board) });
+    queue.push({ board, moves: [], cost: heuristic(board), pathCost: 0 });
     visited.add(board.toString());
 
     while (!queue.isEmpty()) {
-        const { board: currentBoard, moves, g } = queue.pop();
+        const { board: currentBoard, moves, pathCost } = queue.pop();
         nodesVisited++;
-        callback(currentBoard, nodesVisited); // Panggil callback untuk update visual
+        if (callback) {
+            callback(currentBoard, nodesVisited, moves.length > 0 ? moves[moves.length - 1].carId : null);
+        }
         if (currentBoard.isSolved()) {
             const timeTaken = performance.now() - startTime;
             return { moves, nodesVisited, timeTaken };
@@ -22,9 +24,8 @@ function aStar(board, heuristic, callback) {
             if (!visited.has(stateStr)) {
                 visited.add(stateStr);
                 const newMoves = [...moves, move];
-                const newG = g + 1;
-                const h = heuristic(newBoard);
-                queue.push({ board: newBoard, moves: newMoves, g: newG, cost: newG + h });
+                const newPathCost = pathCost + 1;
+                queue.push({ board: newBoard, moves: newMoves, cost: newPathCost + heuristic(newBoard), pathCost: newPathCost });
             }
         }
     }

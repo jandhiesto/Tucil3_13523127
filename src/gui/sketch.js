@@ -2,6 +2,20 @@ let solution = null;
 let currentStep = 0;
 let isSolving = false;
 const CELL_SIZE = 60;
+let estimatedTotalNodes = 1000;
+
+// Fungsi untuk menghitung jarak primary piece ke pintu keluar
+function calculateDistanceToExit(board) {
+    const primaryCar = board.cars.find(car => car.id === 'P');
+    if (!primaryCar) return 0;
+    let distance;
+    if (primaryCar.isHorizontal) {
+        distance = Math.abs((primaryCar.col + primaryCar.length) - board.exit.col);
+    } else {
+        distance = Math.abs((primaryCar.row + primaryCar.length) - board.exit.row);
+    }
+    return distance;
+}
 
 // Fungsi untuk mengubah ukuran kanvas
 window.updateCanvasSize = function(width, height) {
@@ -16,6 +30,7 @@ window.updateCanvasSize = function(width, height) {
 function setup() {
     if (window.solver && window.solver.board) {
         createCanvas(window.solver.board.width * CELL_SIZE, window.solver.board.height * CELL_SIZE);
+        estimatedTotalNodes = window.solver.board.width * window.solver.board.height * 50;
     } else {
         createCanvas(360, 360);
     }
@@ -57,13 +72,16 @@ function draw() {
     // Animasi pencarian
     if (window.isSearching && window.searchAlgorithm) {
         console.log('Starting search loop, algorithm:', window.searchAlgorithm, 'nodesVisited:', window.nodesVisited);
-        document.getElementById('output').innerHTML = '<pre>Search in progress... Nodes visited: ' + window.nodesVisited + '\n';
+        let output = document.getElementById('output').innerHTML.replace('</pre>', '');
         if (window.previousBoard) {
-            document.getElementById('output').innerHTML += logBoardWithChanges(window.previousBoard, boardToDraw);
+            output += logBoardWithChanges(window.previousBoard, boardToDraw);
         } else {
-            document.getElementById('output').innerHTML += logBoard(boardToDraw);
+            output += logBoard(boardToDraw);
         }
-        document.getElementById('output').innerHTML += '</pre>';
+        output += '__________________________\n';
+        output += '</pre>';
+        document.getElementById('output').innerHTML = output;
+        document.getElementById('output').scrollTop = document.getElementById('output').scrollHeight;
 
         if (!window.searchResult) {
             let heuristicFunc = window.searchHeuristic === 'blocking' ? blockingPieces : manhattanDistance;
@@ -86,30 +104,49 @@ function draw() {
             }
             console.log('Executing algorithm:', window.searchAlgorithm);
             try {
-                window.searchResult = algorithmFunc(window.currentBoard || window.solver.board.clone(), window.searchAlgorithm !== 'ucs' ? heuristicFunc : null, (board, visited) => {
-                    console.log('Callback triggered - Received nodesVisited:', visited);
+                window.searchResult = algorithmFunc(window.currentBoard || window.solver.board.clone(), window.searchAlgorithm !== 'ucs' ? heuristicFunc : null, (board, visited, carId) => {
+                    console.log('Callback triggered - Received nodesVisited:', visited, 'Car ID:', carId);
                     window.previousBoard = window.currentBoard ? window.currentBoard.clone() : window.solver.board.clone();
                     window.currentBoard = board;
                     window.nodesVisited = visited;
                     console.log('Updated window.nodesVisited to:', window.nodesVisited);
+                    if (window.nodesVisited > estimatedTotalNodes) {
+                        estimatedTotalNodes = window.nodesVisited * 2;
+                    }
+                    updateProgress(board);
+                    // Tambahkan log grid untuk setiap langkah pencarian
+                    let output = document.getElementById('output').innerHTML.replace('</pre>', '');
+                    if (carId) {
+                        output += `Moved car ${carId}:\n`;
+                    }
+                    output += logBoard(board);
+                    output += '__________________________\n';
+                    output += '</pre>';
+                    document.getElementById('output').innerHTML = output;
+                    document.getElementById('output').scrollTop = document.getElementById('output').scrollHeight;
                 });
                 if (window.searchResult) {
                     console.log('Search completed, result:', window.searchResult);
                     window.nodesVisited = window.searchResult.nodesVisited;
                     console.log('Final window.nodesVisited set to:', window.nodesVisited);
+                    let finalOutput = document.getElementById('output').innerHTML.replace('</pre>', '');
                     if (window.searchResult.moves) {
-                        document.getElementById('output').innerHTML = '<pre>Solution found: ' + window.searchResult.moves.length + ' moves\n';
-                        document.getElementById('output').innerHTML += 'Total nodes visited: ' + window.nodesVisited + '\n'; // Tampilkan nodesVisited di log
-                        document.getElementById('output').innerHTML += logBoard(window.currentBoard);
-                        document.getElementById('output').innerHTML += '</pre>';
+                        finalOutput += logBoard(window.currentBoard);
+                        finalOutput += '__________________________\n';
+                        finalOutput += 'Solution found: ' + window.searchResult.moves.length + ' moves\n';
+                        finalOutput += 'Total nodes visited: ' + window.nodesVisited + '\n';
+                        finalOutput += 'Time taken: ' + window.searchResult.timeTaken.toFixed(2) + ' ms\n';
+                        document.getElementById('output').innerHTML = finalOutput + '</pre>';
                         solution = window.searchResult.moves;
                         window.isSearching = false;
                         isSolving = true;
                         currentStep = 0;
+                        updateProgress(window.currentBoard);
                     } else {
-                        document.getElementById('output').innerHTML = '<pre>No solution found\n';
-                        document.getElementById('output').innerHTML += 'Total nodes visited: ' + window.nodesVisited + '\n';
-                        document.getElementById('output').innerHTML += '</pre>';
+                        finalOutput += 'No solution found\n';
+                        finalOutput += 'Total nodes visited: ' + window.nodesVisited + '\n';
+                        finalOutput += 'Time taken: ' + window.searchResult.timeTaken.toFixed(2) + ' ms\n';
+                        document.getElementById('output').innerHTML = finalOutput + '</pre>';
                         window.isSearching = false;
                         alert('No solution found');
                     }
@@ -127,22 +164,24 @@ function draw() {
     if (isSolving && solution && currentStep < solution.length) {
         if (frameCount % 30 === 0) {
             window.solver.board.applyMove(solution[currentStep]);
-            document.getElementById('output').innerHTML = '<pre>Step ' + (currentStep + 1) + ':\n';
+            let output = document.getElementById('output').innerHTML.replace('</pre>', '');
+            output += `Step ${currentStep + 1}:\n`;
             if (window.previousBoard) {
-                document.getElementById('output').innerHTML += logBoardWithChanges(window.previousBoard, window.solver.board);
+                output += logBoardWithChanges(window.previousBoard, window.solver.board);
             } else {
-                document.getElementById('output').innerHTML += logBoard(window.solver.board);
+                output += logBoard(window.solver.board);
             }
-            document.getElementById('output').innerHTML += '</pre>';
+            output += '__________________________\n';
             window.previousBoard = window.solver.board.clone();
             window.currentBoard = window.solver.board;
             currentStep++;
             if (currentStep >= solution.length) {
                 isSolving = false;
-                document.getElementById('output').innerHTML = '<pre>Solution animation finished (Time taken: ' + window.searchResult.timeTaken.toFixed(2) + ' ms)\n';
-                document.getElementById('output').innerHTML += logBoard(window.solver.board);
-                document.getElementById('output').innerHTML += '</pre>';
+                output += 'Solution animation finished (Time taken: ' + window.searchResult.timeTaken.toFixed(2) + ' ms)\n';
             }
+            output += '</pre>';
+            document.getElementById('output').innerHTML = output;
+            document.getElementById('output').scrollTop = document.getElementById('output').scrollHeight;
         }
     }
 
@@ -155,5 +194,20 @@ function draw() {
         } else {
             rect(window.solver.board.exit.col * CELL_SIZE, window.solver.board.height * CELL_SIZE, CELL_SIZE, CELL_SIZE);
         }
+    }
+}
+
+// Fungsi untuk memperbarui kemajuan
+function updateProgress(board) {
+    const progressElement = document.getElementById('progress');
+    if (progressElement && window.nodesVisited >= 0) {
+        const initialBoard = window.solver.board;
+        const initialDistance = calculateDistanceToExit(initialBoard);
+        const currentDistance = calculateDistanceToExit(board);
+        let distanceProgress = initialDistance > 0 ? ((initialDistance - currentDistance) / initialDistance) * 100 : 100;
+        let nodeProgress = (window.nodesVisited / estimatedTotalNodes) * 100;
+        const combinedProgress = Math.min((0.7 * distanceProgress + 0.3 * nodeProgress), 100);
+        progressElement.textContent = `Progress: ${combinedProgress.toFixed(1)}% (Nodes visited: ${window.nodesVisited})`;
+        console.log('Progress updated:', { distanceProgress, nodeProgress, combinedProgress, nodesVisited: window.nodesVisited });
     }
 }
