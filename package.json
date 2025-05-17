@@ -1,0 +1,14 @@
+{
+  "name": "rush-hour",
+  "version": "1.0.0",
+  "description": "Rush Hour game solver with pathfinding algorithms",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "vite": "^5.4.8"
+  },
+  "license": "MIT"
+}
