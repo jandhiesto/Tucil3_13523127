@@ -28,10 +28,19 @@ function loadConfig() {
         alert('Please enter a config file name');
         return;
     }
+    window.configFileName = fileName; // Simpan nama file konfigurasi untuk digunakan saat menyimpan solusi
     readConfigFile(fileName, (content) => {
         try {
             solver.loadConfig(content);
             window.previousBoard = solver.board.clone();
+            const primaryCar = solver.board.cars.find(c => c.id === 'P');
+            if (primaryCar && solver.board.exit) {
+                if (primaryCar.isHorizontal && solver.board.exit.row !== primaryCar.row) {
+                    throw new Error('Exit (K) must be on the same row as horizontal primary car (P)');
+                } else if (!primaryCar.isHorizontal && solver.board.exit.col !== primaryCar.col) {
+                    throw new Error('Exit (K) must be on the same column as vertical primary car (P)');
+                }
+            }
             document.getElementById('output').innerHTML = '<pre>Config loaded successfully:\n' + logBoard(solver.board) + '</pre>';
             if (typeof window.updateCanvasSize === 'function') {
                 window.updateCanvasSize(solver.board.width, solver.board.height);
@@ -50,6 +59,7 @@ function startSolve() {
         alert('Please load a config file first');
         return;
     }
+    window.solutionSteps = []; // Reset langkah-langkah sebelum memulai pencarian
     window.searchAlgorithm = null;
     window.searchHeuristic = null;
     window.searchStep = 0;
@@ -59,7 +69,7 @@ function startSolve() {
     window.currentBoard = null;
     window.previousBoard = solver.board.clone();
     document.getElementById('progress').textContent = 'Progress: 0% (Nodes visited: 0)';
-    document.getElementById('output').innerHTML = '<pre>Starting search...   </pre>';
+    document.getElementById('output').innerHTML = '<pre>Starting search...</pre>';
 
     const algorithm = document.getElementById('algorithm').value;
     const heuristic = document.getElementById('heuristic').value;

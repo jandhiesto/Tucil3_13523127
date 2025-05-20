@@ -3,16 +3,18 @@ let currentStep = 0;
 let isSolving = false;
 const CELL_SIZE = 60;
 let estimatedTotalNodes = 1000;
+let solutionSteps = []; // Array untuk menyimpan langkah-langkah
+let configFileName = ''; // Untuk menyimpan nama file konfigurasi
 
 // Fungsi untuk menghitung jarak primary piece ke pintu keluar
 function calculateDistanceToExit(board) {
-    const primaryCar = board.cars.find(car => car.id === 'P');
-    if (!primaryCar) return 0;
+    const primaryCar = board?.cars?.find(car => car.id === 'P');
+    if (!primaryCar || !board.exit) return 0;
     let distance;
     if (primaryCar.isHorizontal) {
-        distance = Math.abs((primaryCar.col + primaryCar.length) - board.exit.col);
+        distance = Math.abs((primaryCar.col + primaryCar.length) - (board.exit.col >= 0 ? board.exit.col : board.width));
     } else {
-        distance = Math.abs((primaryCar.row + primaryCar.length) - board.exit.row);
+        distance = Math.abs((primaryCar.row + primaryCar.length) - (board.exit.row >= 0 ? board.exit.row : board.height));
     }
     return distance;
 }
@@ -26,6 +28,22 @@ window.updateCanvasSize = function(width, height) {
         console.error('p5.js not ready');
     }
 };
+
+// Fungsi untuk menyimpan langkah-langkah ke file .txt
+function saveSolutionToFile(steps, configName) {
+    const fileName = configName.replace(/\.[^/.]+$/, "") + 'solution.txt'; // Hapus ekstensi dan tambahkan "solution.txt"
+    const content = steps.join('\n');
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    console.log(`Solution saved as ${fileName}`);
+}
 
 function setup() {
     if (window.solver && window.solver.board) {
@@ -57,15 +75,35 @@ function draw() {
 
     // Gunakan currentBoard untuk animasi pencarian
     const boardToDraw = window.currentBoard || window.solver.board;
+    console.log('boardToDraw:', boardToDraw);
 
     // Gambar balok-balok berwarna
-    for (let car of boardToDraw.cars) {
-        fill(car.color);
+    if (boardToDraw && Array.isArray(boardToDraw.cars)) {
+        for (let car of boardToDraw.cars) {
+            fill(car.color);
+            noStroke();
+            if (car.isHorizontal) {
+                rect(car.col * CELL_SIZE, car.row * CELL_SIZE, car.length * CELL_SIZE, CELL_SIZE);
+            } else {
+                rect(car.col * CELL_SIZE, car.row * CELL_SIZE, CELL_SIZE, car.length * CELL_SIZE);
+            }
+        }
+    } else {
+        console.error('boardToDraw.cars is not iterable:', boardToDraw?.cars);
+    }
+
+    // Gambar kotak exit di luar papan
+    if (boardToDraw?.exit) {
+        fill('blue');
         noStroke();
-        if (car.isHorizontal) {
-            rect(car.col * CELL_SIZE, car.row * CELL_SIZE, car.length * CELL_SIZE, CELL_SIZE);
-        } else {
-            rect(car.col * CELL_SIZE, car.row * CELL_SIZE, CELL_SIZE, car.length * CELL_SIZE);
+        if (boardToDraw.exit.col === -1) {
+            rect(-CELL_SIZE, boardToDraw.exit.row * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+        } else if (boardToDraw.exit.col === boardToDraw.width) {
+            rect(boardToDraw.width * CELL_SIZE, boardToDraw.exit.row * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+        } else if (boardToDraw.exit.row === -1) {
+            rect(boardToDraw.exit.col * CELL_SIZE, -CELL_SIZE, CELL_SIZE, CELL_SIZE);
+        } else if (boardToDraw.exit.row === boardToDraw.height) {
+            rect(boardToDraw.exit.col * CELL_SIZE, boardToDraw.height * CELL_SIZE, CELL_SIZE, CELL_SIZE);
         }
     }
 
@@ -73,15 +111,22 @@ function draw() {
     if (window.isSearching && window.searchAlgorithm) {
         console.log('Starting search loop, algorithm:', window.searchAlgorithm, 'nodesVisited:', window.nodesVisited);
         let output = document.getElementById('output').innerHTML.replace('</pre>', '');
+        let stepOutput = [];
         if (window.previousBoard) {
-            output += logBoardWithChanges(window.previousBoard, boardToDraw);
+            const log = logBoardWithChanges(window.previousBoard, boardToDraw);
+            output += log;
+            stepOutput.push(log);
         } else {
-            output += logBoard(boardToDraw);
+            const log = logBoard(boardToDraw);
+            output += log;
+            stepOutput.push(log);
         }
         output += '----\n';
+        stepOutput.push('----');
         output += '</pre>';
         document.getElementById('output').innerHTML = output;
         document.getElementById('output').scrollTop = document.getElementById('output').scrollHeight;
+        solutionSteps.push(...stepOutput);
 
         if (!window.searchResult) {
             let heuristicFunc = window.searchHeuristic === 'blocking' ? blockingPieces : manhattanDistance;
@@ -117,42 +162,66 @@ function draw() {
                         estimatedTotalNodes = window.nodesVisited * 2;
                     }
                     updateProgress(board);
-                    // Tambahkan log grid untuk setiap langkah pencarian
                     let output = document.getElementById('output').innerHTML.replace('</pre>', '');
+                    let stepOutput = [];
                     if (carId) {
-                        output += `Moved car ${carId}:\n`;
+                        const moveLog = `Moved car ${carId}:`;
+                        output += moveLog + '\n';
+                        stepOutput.push(moveLog);
                     }
-                    output += logBoard(board);
+                    const boardLog = logBoard(board);
+                    output += boardLog;
+                    stepOutput.push(boardLog);
                     output += '----\n';
+                    stepOutput.push('----');
                     output += '</pre>';
                     document.getElementById('output').innerHTML = output;
                     document.getElementById('output').scrollTop = document.getElementById('output').scrollHeight;
+                    solutionSteps.push(...stepOutput);
                 });
                 if (window.searchResult) {
                     console.log('Search completed, result:', window.searchResult);
                     window.nodesVisited = window.searchResult.nodesVisited;
                     console.log('Final window.nodesVisited set to:', window.nodesVisited);
                     let finalOutput = document.getElementById('output').innerHTML.replace('</pre>', '');
+                    let finalSteps = [];
                     if (window.searchResult.moves) {
-                        finalOutput += logBoard(window.currentBoard);
+                        const boardLog = logBoard(window.currentBoard);
+                        finalOutput += boardLog;
+                        finalSteps.push(boardLog);
                         finalOutput += '----\n';
-                        finalOutput += 'Solution found: ' + window.searchResult.moves.length + ' moves\n';
-                        finalOutput += 'Total nodes visited: ' + window.nodesVisited + '\n';
-                        finalOutput += 'Time taken: ' + window.searchResult.timeTaken.toFixed(2) + ' ms\n';
+                        finalSteps.push('----');
+                        const solutionFound = 'Solution found: ' + window.searchResult.moves.length + ' moves';
+                        finalOutput += solutionFound + '\n';
+                        finalSteps.push(solutionFound);
+                        const nodesVisited = 'Total nodes visited: ' + window.nodesVisited;
+                        finalOutput += nodesVisited + '\n';
+                        finalSteps.push(nodesVisited);
+                        const timeTaken = 'Time taken: ' + window.searchResult.timeTaken.toFixed(2) + ' ms';
+                        finalOutput += timeTaken + '\n';
+                        finalSteps.push(timeTaken);
                         document.getElementById('output').innerHTML = finalOutput + '</pre>';
+                        solutionSteps.push(...finalSteps);
                         solution = window.searchResult.moves;
                         window.isSearching = false;
                         isSolving = true;
                         currentStep = 0;
                         updateProgress(window.currentBoard);
                     } else {
-                        finalOutput += 'No solution found\n';
+                        const noSolution = 'No solution found';
+                        finalOutput += noSolution + '\n';
+                        finalSteps.push(noSolution);
                         finalOutput += 'Total nodes visited: ' + window.nodesVisited + '\n';
+                        finalSteps.push('Total nodes visited: ' + window.nodesVisited);
                         finalOutput += 'Time taken: ' + window.searchResult.timeTaken.toFixed(2) + ' ms\n';
+                        finalSteps.push('Time taken: ' + window.searchResult.timeTaken.toFixed(2) + ' ms');
                         document.getElementById('output').innerHTML = finalOutput + '</pre>';
+                        solutionSteps.push(...finalSteps);
                         window.isSearching = false;
                         alert('No solution found');
                     }
+                    // Simpan langkah-langkah ke file setelah pencarian selesai
+                    saveSolutionToFile(solutionSteps, configFileName);
                 }
             } catch (e) {
                 document.getElementById('output').innerHTML = '<pre>Error running algorithm: ' + e.message + '</pre>';
@@ -168,34 +237,38 @@ function draw() {
         if (frameCount % 30 === 0) {
             window.solver.board.applyMove(solution[currentStep]);
             let output = document.getElementById('output').innerHTML.replace('</pre>', '');
-            output += `Step ${currentStep + 1}:\n`;
+            let stepOutput = [];
+            const stepLog = `Step ${currentStep + 1}:`;
+            output += stepLog + '\n';
+            stepOutput.push(stepLog);
             if (window.previousBoard) {
-                output += logBoardWithChanges(window.previousBoard, window.solver.board);
+                const log = logBoardWithChanges(window.previousBoard, window.solver.board);
+                output += log;
+                stepOutput.push(log);
             } else {
-                output += logBoard(window.solver.board);
+                const log = logBoard(window.solver.board);
+                output += log;
+                stepOutput.push(log);
             }
             output += '----\n';
+            stepOutput.push('----');
             window.previousBoard = window.solver.board.clone();
             window.currentBoard = window.solver.board;
             currentStep++;
             if (currentStep >= solution.length) {
                 isSolving = false;
-                output += 'Solution animation finished (Time taken: ' + window.searchResult.timeTaken.toFixed(2) + ' ms)\n';
+                const finishedLog = 'Solution animation finished (Time taken: ' + window.searchResult.timeTaken.toFixed(2) + ' ms)';
+                output += finishedLog + '\n';
+                stepOutput.push(finishedLog);
             }
             output += '</pre>';
             document.getElementById('output').innerHTML = output;
             document.getElementById('output').scrollTop = document.getElementById('output').scrollHeight;
-        }
-    }
-
-    // Tambahkan penanda K di luar kanvas
-    if (window.solver.board.exit) {
-        fill('blue');
-        noStroke();
-        if (window.solver.board.cars.find(car => car.id === 'P').isHorizontal) {
-            rect(window.solver.board.width * CELL_SIZE, window.solver.board.exit.row * CELL_SIZE, CELL_SIZE, CELL_SIZE);
-        } else {
-            rect(window.solver.board.exit.col * CELL_SIZE, window.solver.board.height * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+            solutionSteps.push(...stepOutput);
+            // Simpan ulang setelah animasi selesai
+            if (!isSolving) {
+                saveSolutionToFile(solutionSteps, configFileName);
+            }
         }
     }
 }
