@@ -78,7 +78,7 @@ function draw() {
         } else {
             output += logBoard(boardToDraw);
         }
-        output += '__________________________\n';
+        output += '----\n';
         output += '</pre>';
         document.getElementById('output').innerHTML = output;
         document.getElementById('output').scrollTop = document.getElementById('output').scrollHeight;
@@ -96,6 +96,9 @@ function draw() {
                 case 'astar':
                     algorithmFunc = aStar;
                     break;
+                case 'iddfs':
+                    algorithmFunc = iddfs;
+                    break;
                 default:
                     console.error('Unknown algorithm:', window.searchAlgorithm);
                     window.isSearching = false;
@@ -104,7 +107,7 @@ function draw() {
             }
             console.log('Executing algorithm:', window.searchAlgorithm);
             try {
-                window.searchResult = algorithmFunc(window.currentBoard || window.solver.board.clone(), window.searchAlgorithm !== 'ucs' ? heuristicFunc : null, (board, visited, carId) => {
+                window.searchResult = algorithmFunc(window.currentBoard || window.solver.board.clone(), window.searchAlgorithm !== 'ucs' && window.searchAlgorithm !== 'iddfs' ? heuristicFunc : null, (board, visited, carId) => {
                     console.log('Callback triggered - Received nodesVisited:', visited, 'Car ID:', carId);
                     window.previousBoard = window.currentBoard ? window.currentBoard.clone() : window.solver.board.clone();
                     window.currentBoard = board;
@@ -120,7 +123,7 @@ function draw() {
                         output += `Moved car ${carId}:\n`;
                     }
                     output += logBoard(board);
-                    output += '__________________________\n';
+                    output += '----\n';
                     output += '</pre>';
                     document.getElementById('output').innerHTML = output;
                     document.getElementById('output').scrollTop = document.getElementById('output').scrollHeight;
@@ -132,7 +135,7 @@ function draw() {
                     let finalOutput = document.getElementById('output').innerHTML.replace('</pre>', '');
                     if (window.searchResult.moves) {
                         finalOutput += logBoard(window.currentBoard);
-                        finalOutput += '__________________________\n';
+                        finalOutput += '----\n';
                         finalOutput += 'Solution found: ' + window.searchResult.moves.length + ' moves\n';
                         finalOutput += 'Total nodes visited: ' + window.nodesVisited + '\n';
                         finalOutput += 'Time taken: ' + window.searchResult.timeTaken.toFixed(2) + ' ms\n';
@@ -171,7 +174,7 @@ function draw() {
             } else {
                 output += logBoard(window.solver.board);
             }
-            output += '__________________________\n';
+            output += '----\n';
             window.previousBoard = window.solver.board.clone();
             window.currentBoard = window.solver.board;
             currentStep++;
