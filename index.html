@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rush Hour Solver</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.2/p5.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        h1 {
+            text-align: center;
+        }
+        .controls {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        #output {
+            border: 1px solid #ccc;
+            padding: 10px;
+            background-color: #f9f9f9;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        pre {
+            margin: 0;
+            white-space: pre-wrap;
+        }
+        #progress {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Rush Hour Solver</h1>
+    <div class="controls">
+        <input type="text" id="configFileName" placeholder="Enter config file name (e.g., input)">
+        <button onclick="loadConfig()">Load Config</button>
+        <select id="algorithm">
+            <option value="greedy">Greedy Best-First Search</option>
+            <option value="ucs">UCS</option>
+            <option value="astar">A*</option>
+            <option value="iddfs">Iterative Deepening DFS</option>
+        </select>
+        <select id="heuristic">
+            <option value="blocking">Blocking Pieces</option>
+            <option value="manhattan">Manhattan Distance</option>
+        </select>
+        <button onclick="startSolve()">Solve</button>
+    </div>
+    <div id="progress">Progress: 0% (Nodes visited: 0)</div>
+    <div id="canvas-container"></div>
+    <div id="output"></div>
+    <script src="src/utils/fileReader.js"></script>
+    <script src="src/utils/logger.js"></script>
+    <script src="src/core/car.js"></script>
+    <script src="src/core/board.js"></script>
+    <script src="src/algorithms/heuristics.js"></script>
+    <script src="src/algorithms/greedyBFS.js"></script>
+    <script src="src/algorithms/ucs.js"></script>
+    <script src="src/algorithms/aStar.js"></script>
+    <script src="src/algorithms/iddfs.js"></script>
+    <script src="src/core/solver.js"></script>
+    <script src="src/gui/sketch.js"></script>
+    <script src="src/gui/interface.js"></script>
+</body>
+</html>
